@@ -6,7 +6,8 @@ const tripStops = [
 ];
 let map, traveler, route, routeFrame, routePlaying=false, routeIndex=0, legIndex=0, legElapsed=0, routeLast=0, cameraPhase='';
 const cityMarkers=[];
-const travelDuration=i=>(i===0||i===10)?28000:isFlight(i)?18000:14000;
+const travelDuration=i=>(i===0||i===10)?28000:isFlight(i)?9000:7000;
+const travelZoom=i=>(i===0||i===10)?5:isFlight(i)?7:8;
 let flashPhotos=null, flashIndex=-1, flashElapsed=0, flashToken=0;
 const cityPlaces={'Seúl':['Seúl','Gwanghwamun','Olympic Park','Namsan','Myeongdong'],'Busan':['Busan'],'Tokio':['Akihabara','Shibuya','Asakusa','Odaiba','Roppongi'],'Nagoya':['Nagoya'],'Kioto':['Arashiyama','Fushimi Inari'],'Nara':['Nara'],'Hiroshima':['Hiroshima'],'Osaka':['Osaka','Pokémon']};
 const routeAlbum=fetch('album.json').then(r=>{if(!r.ok)throw Error('Album');return r.json();}).catch(()=>[]);
@@ -53,7 +54,7 @@ function drawLeg(t){
   const pos=points[n].map((v,k)=>v+(points[n+1][k]-v)*f);
   route.setLatLngs([...legs.slice(0,legIndex),[...points.slice(0,n+1),pos]]);traveler.setLatLng(pos);
   // One fixed scale and a camera locked to the vehicle; no competing zoom animations.
-  if(routePlaying&&!reduced)map.setView(pos,5,{animate:false});
+  if(routePlaying&&!reduced)map.setView(pos,travelZoom(legIndex),{animate:false});
   if(isFlight(legIndex)){const a=map.project(points[n]),b=map.project(points[n+1]);traveler.getElement().querySelector('.vehicle-body').style.transform=`rotate(${Math.atan2(b.y-a.y,b.x-a.x)*180/Math.PI}deg)`;}
   $('#route-fill').style.width=`${(legIndex+t)/legs.length*100}%`;
 }
@@ -85,7 +86,7 @@ function routeTick(time){
       $('#route-state').textContent=isFlight(legIndex)?'En vuelo · cruzando el horizonte':'En tren · entre ciudades';
       if(legIndex<10)prepareFlash(b.name);
       // Settle gently to the travel scale before moving the vehicle.
-      map.flyTo([a.lat,a.lng],5,{animate:!reduced,duration:3.5});
+      map.flyTo([a.lat,a.lng],travelZoom(legIndex),{animate:!reduced,duration:3.5});
       cameraPhase='settle';
     }
     legElapsed+=delta;
