@@ -7,7 +7,13 @@ const tripStops = [
 let map, traveler, route, routeFrame, routePlaying=false, routeIndex=0, legIndex=0, legElapsed=0, routeLast=0, cameraPhase='';
 const cityMarkers=[];
 const travelDuration=i=>(i===0||i===10)?28000:isFlight(i)?9000:7000;
-const travelZoom=i=>(i===0||i===10)?5:isFlight(i)?7:8;
+const travelZoom=i=>{
+  if(i===0||i===10)return 5;
+  const a=tripStops[i],b=tripStops[i+1];
+  const km=L.latLng(a.lat,a.lng).distanceTo([b.lat,b.lng])/1000;
+  return km<65?10:km<180?9:km<500?8:7;
+};
+let arrivalElapsed=0;
 let flashPhotos=null, flashIndex=-1, flashElapsed=0, flashToken=0;
 const cityPlaces={'Seúl':['Seúl','Gwanghwamun','Olympic Park','Namsan','Myeongdong'],'Busan':['Busan'],'Tokio':['Akihabara','Shibuya','Asakusa','Odaiba','Roppongi'],'Nagoya':['Nagoya'],'Kioto':['Arashiyama','Fushimi Inari'],'Nara':['Nara'],'Hiroshima':['Hiroshima'],'Osaka':['Osaka','Pokémon']};
 const routeAlbum=fetch('album.json').then(r=>{if(!r.ok)throw Error('Album');return r.json();}).catch(()=>[]);
@@ -15,6 +21,12 @@ async function prepareFlash(city){
   const token=++flashToken;flashPhotos=null;flashIndex=-1;flashElapsed=0;
   const pool=(await routeAlbum).filter(p=>cityPlaces[city]?.includes(p.place));
   for(let i=pool.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[pool[i],pool[j]]=[pool[j],pool[i]];}
+  // Spread selections across places and capture times to avoid bursts of near-identical shots.
+  const varied=[],used=new Set();
+  for(const p of pool){const bucket=p.place+'|'+(p.datetime||p.date).slice(0,15);if(!used.has(bucket)){used.add(bucket);varied.push(p);}}
+  const districts=[...new Set(varied.map(p=>p.place))],balanced=[];
+  while(varied.length){for(const district of districts){const i=varied.findIndex(p=>p.place===district);if(i>=0)balanced.push(...varied.splice(i,1));}}
+  pool.splice(0,pool.length,...balanced,...pool.filter(p=>!balanced.includes(p)));
   const ready=[];
   for(let offset=0;offset<Math.min(pool.length,40)&&ready.length<10;offset+=10){
     const batch=await Promise.all(pool.slice(offset,offset+10).map(p=>new Promise(resolve=>{const img=new Image();const timer=setTimeout(()=>resolve(null),6000);img.onload=()=>{clearTimeout(timer);resolve(p)};img.onerror=()=>{clearTimeout(timer);resolve(null)};img.src=p.src;})));
@@ -54,7 +66,11 @@ function drawLeg(t){
   const pos=points[n].map((v,k)=>v+(points[n+1][k]-v)*f);
   route.setLatLngs([...legs.slice(0,legIndex),[...points.slice(0,n+1),pos]]);traveler.setLatLng(pos);
   // One fixed scale and a camera locked to the vehicle; no competing zoom animations.
-  if(routePlaying&&!reduced)map.setView(pos,travelZoom(legIndex),{animate:false});
+  if(routePlaying&&!reduced){
+    const zoom=travelZoom(legIndex),center=map.project(pos,zoom);
+    center.y-=map.getSize().y*.10;
+    map.setView(map.unproject(center,zoom),zoom,{animate:false});
+  }
   if(isFlight(legIndex)){const a=map.project(points[n]),b=map.project(points[n+1]);traveler.getElement().querySelector('.vehicle-body').style.transform=`rotate(${Math.atan2(b.y-a.y,b.x-a.x)*180/Math.PI}deg)`;}
   $('#route-fill').style.width=`${(legIndex+t)/legs.length*100}%`;
 }
@@ -68,7 +84,10 @@ function nextLeg(){
 function routeTick(time){
   if(!routePlaying)return;
   const delta=routeLast?Math.min(time-routeLast,100):0;routeLast=time;
-  if(cameraPhase==='flash'){
+  if(cameraPhase==='arrival'){
+    arrivalElapsed+=delta;
+    if(arrivalElapsed>=1800){cameraPhase='flash';document.querySelector('.route-arrival')?.setAttribute('hidden','');}
+  }else if(cameraPhase==='flash'){
     if(flashPhotos===null){$('#route-state').textContent='Preparando los recuerdos…';}
     else if(!flashPhotos.length){$('#route-state').textContent='No se han podido cargar las fotos de esta parada';nextLeg();}
     else{
@@ -85,6 +104,7 @@ function routeTick(time){
       $('#route-leg').textContent=`${a.name} → ${b.name}`;
       $('#route-state').textContent=isFlight(legIndex)?'En vuelo · cruzando el horizonte':'En tren · entre ciudades';
       if(legIndex<10)prepareFlash(b.name);
+      if(typeof playDeparture==='function')playDeparture();
       // Settle gently to the travel scale before moving the vehicle.
       map.flyTo([a.lat,a.lng],travelZoom(legIndex),{animate:!reduced,duration:3.5});
       cameraPhase='settle';
@@ -93,12 +113,12 @@ function routeTick(time){
     if(legElapsed>=3600){
       cameraPhase='travel';
       const t=Math.min(1,(legElapsed-3600)/travelDuration(legIndex));
-      drawLeg(t);
+      drawLeg(t*t*(3-2*t));
       if(t===1){
         selectStop(legIndex+1,false);
         $('#route-state').textContent=legIndex===10?'De vuelta en casa ♥':`Diez recuerdos de ${tripStops[legIndex+1].name}`;
         if(legIndex===10)nextLeg();
-        else{cameraPhase='flash';flashElapsed=0;flashIndex=-1;}
+        else{cameraPhase='arrival';arrivalElapsed=0;flashElapsed=0;flashIndex=-1;if(typeof announceArrival==='function')announceArrival();}
       }
     }
   }
@@ -110,7 +130,7 @@ try{
   if(!window.L)throw Error('Mapa no disponible');
   map=L.map('map',{scrollWheelZoom:false,zoomControl:false,renderer:L.canvas({padding:1}),zoomAnimation:false});L.control.zoom({position:'bottomright'}).addTo(map);
   L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:17,attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'}).addTo(map);
-  legs.forEach((points,i)=>L.polyline(points,{color:isFlight(i)?'#cba971':'#83a99b',weight:2,opacity:.6,dashArray:isFlight(i)?'4 9':null}).addTo(map));
+  legs.forEach((points,i)=>L.polyline(points,{color:isFlight(i)?'#cba971':'#83a99b',weight:1.5,opacity:.2,dashArray:isFlight(i)?'4 9':null}).addTo(map));
   route=L.polyline([],{color:'#ffe0a0',weight:3,opacity:1,smoothFactor:0,noClip:true}).addTo(map);
   tripStops.forEach((s,i)=>{const m=L.marker([s.lat,s.lng],{icon:L.divIcon({className:'route-city',html:'<span></span>',iconSize:[16,16],iconAnchor:[8,8]}),title:`${s.name} · ${s.date}`}).addTo(map).on('click',()=>jumpTo(i));if(![3,10,11].includes(i))m.bindTooltip(s.name,{permanent:true,direction:'right',offset:[10,0],className:'route-city-label'});cityMarkers.push(m);});
   traveler=L.marker([tripStops[0].lat,tripStops[0].lng],{interactive:false,zIndexOffset:1000}).addTo(map);setVehicle(0);

@@ -19,10 +19,10 @@ for(let i=0;i<11;i++){
   if(await page.locator('#stop-title').textContent()!==await page.evaluate(i=>tripStops[i+1].name,i))throw Error('Arrival '+i);
 }
 await page.evaluate(()=>{jumpTo(0);map.stop();routePlaying=true;cameraPhase='travel';legElapsed=18000;routeLast=0;routeTick(performance.now());cancelAnimationFrame(routeFrame);});
-if(!await page.evaluate(()=>map.getZoom()===5&&map.getCenter().distanceTo(traveler.getLatLng())<500))throw Error('Camera must follow vehicle at steady zoom');
+if(!await page.evaluate(()=>map.getZoom()===5&&Math.abs(map.latLngToContainerPoint(traveler.getLatLng()).y-map.getSize().y*.6)<3))throw Error('Camera must follow vehicle at steady zoom');
 await page.locator('.map-shell').screenshot({path:'qa-route-follow.png'});
 await page.evaluate(()=>stopRoute());
-await page.evaluate(async()=>{jumpTo(0);await prepareFlash('Seúl');routePlaying=true;cameraPhase='travel';legElapsed=3600+travelDuration(0);routeLast=0;routeTick(performance.now());cancelAnimationFrame(routeFrame);routeTick(performance.now());cancelAnimationFrame(routeFrame);});
+await page.evaluate(async()=>{jumpTo(0);await prepareFlash('Seúl');routePlaying=true;cameraPhase='travel';legElapsed=3600+travelDuration(0);routeLast=0;routeTick(performance.now());cancelAnimationFrame(routeFrame);arrivalElapsed=1800;routeTick(performance.now());cancelAnimationFrame(routeFrame);routeTick(performance.now());cancelAnimationFrame(routeFrame);});
 if(await page.locator('#route-flash').isHidden())throw Error('Arrival flash missing');
 if(await page.evaluate(()=>flashPhotos.length)!==10)throw Error('Need ten photos');
 if(await page.evaluate(()=>new Set(flashPhotos.map(p=>p.src)).size)!==10)throw Error('Duplicate photos');
@@ -48,6 +48,25 @@ await page.locator('#ruta').scrollIntoViewIfNeeded();await page.waitForTimeout(2
 await page.locator('.route-layout').screenshot({path:'qa-route-desktop.png'});
 await page.setViewportSize({width:390,height:900});await page.waitForTimeout(500);
 await page.locator('.route-layout').screenshot({path:'qa-route-mobile.png'});
+await page.locator('#route-immersive').click();
+if(!await page.locator('.route-layout').evaluate(el=>el.classList.contains('is-immersive')))throw Error('Immersive open');
+await page.screenshot({path:'qa-route-immersive.png'});
+await page.keyboard.press('Escape');
+if(await page.locator('.route-layout').evaluate(el=>el.classList.contains('is-immersive')))throw Error('Immersive close');
+await page.locator('[data-visit="6"]').click();
+await page.locator('#visit-memories').click();
+await page.waitForFunction(()=>!document.querySelector('#route-flash').hidden);
+if(await page.locator('#route-flash-city').textContent()!=='Kioto')throw Error('Timeline memories city');
+await page.locator('#route-sound').click();
+if(await page.locator('#route-sound').getAttribute('aria-pressed')!=='true')throw Error('Audio enable');
+await page.locator('#route-sound').click();
+await page.evaluate(()=>{jumpTo(10);map.stop();routePlaying=true;cameraPhase='travel';legElapsed=3600+travelDuration(10);routeLast=0;routeTick(performance.now());});
+await page.waitForTimeout(6200);
+if(await page.locator('.route-ending').isHidden())throw Error('Ending absent');
+await page.locator('.map-shell').screenshot({path:'qa-route-ending.png'});
+await page.locator('#route-replay').click();
+if(await page.evaluate(()=>routeIndex)!==0)throw Error('Replay did not reset');
+await page.evaluate(()=>stopRoute());
 await page.emulateMedia({reducedMotion:'reduce'});await page.reload();await page.waitForSelector('[data-stop="11"]');
 await page.locator('[data-stop="11"]').click();if(await page.locator('#stop-title').textContent()!=='Barcelona')throw Error('Return Barcelona');
 if(errors.length)throw Error(errors.join(';'));console.log('PASS: 1440/768/390 px, no overflow; map tiles, route animation, cinema pause/next/Escape, album filter/pagination/lightbox/keyboard; no JS errors.');await browser.close();server.close();})().catch(e=>{console.error(e);server.close();process.exit(1)});
