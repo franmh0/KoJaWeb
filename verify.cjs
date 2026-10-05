@@ -15,9 +15,32 @@ await page.getByRole('button',{name:'Pausar ruta'}).click();
 const paused=await page.evaluate(()=>legElapsed);await page.waitForTimeout(200);
 if(await page.evaluate(()=>legElapsed)!==paused)throw Error('Route pause');
 for(let i=0;i<11;i++){
-  await page.evaluate(i=>{jumpTo(i);routePlaying=true;legElapsed=7100;routeLast=0;routeTick(performance.now());cancelAnimationFrame(routeFrame);},i);
+  await page.evaluate(i=>{jumpTo(i);routePlaying=true;cameraPhase='travel';legElapsed=3600+travelDuration(i);routeLast=0;routeTick(performance.now());cancelAnimationFrame(routeFrame);},i);
   if(await page.locator('#stop-title').textContent()!==await page.evaluate(i=>tripStops[i+1].name,i))throw Error('Arrival '+i);
 }
+await page.evaluate(()=>{jumpTo(0);map.stop();routePlaying=true;cameraPhase='travel';legElapsed=18000;routeLast=0;routeTick(performance.now());cancelAnimationFrame(routeFrame);});
+if(!await page.evaluate(()=>map.getZoom()===5&&map.getCenter().distanceTo(traveler.getLatLng())<500))throw Error('Camera must follow vehicle at steady zoom');
+await page.locator('.map-shell').screenshot({path:'qa-route-follow.png'});
+await page.evaluate(()=>stopRoute());
+await page.evaluate(async()=>{jumpTo(0);await prepareFlash('Seúl');routePlaying=true;cameraPhase='travel';legElapsed=3600+travelDuration(0);routeLast=0;routeTick(performance.now());cancelAnimationFrame(routeFrame);routeTick(performance.now());cancelAnimationFrame(routeFrame);});
+if(await page.locator('#route-flash').isHidden())throw Error('Arrival flash missing');
+if(await page.evaluate(()=>flashPhotos.length)!==10)throw Error('Need ten photos');
+if(await page.evaluate(()=>new Set(flashPhotos.map(p=>p.src)).size)!==10)throw Error('Duplicate photos');
+if(!await page.evaluate(()=>flashPhotos.every(p=>cityPlaces['Seúl'].includes(p.place))))throw Error('Wrong city photos');
+await page.evaluate(()=>stopRoute());
+const flashPaused=await page.evaluate(()=>flashElapsed);await page.waitForTimeout(1100);
+if(await page.evaluate(()=>flashElapsed)!==flashPaused)throw Error('Flash pause');
+await page.setViewportSize({width:390,height:900});
+await page.locator('.map-shell').screenshot({path:'qa-route-flash.png'});
+for(let j=1;j<10;j++){
+ await page.evaluate(j=>{routePlaying=true;flashElapsed=j*1000;routeLast=0;routeTick(performance.now());cancelAnimationFrame(routeFrame);},j);
+ if(await page.locator('#route-flash-count').textContent()!==`${j+1} / 10`)throw Error('Flash counter');
+}
+await page.evaluate(()=>{flashElapsed=10000;routeLast=0;routeTick(performance.now());cancelAnimationFrame(routeFrame);});
+if(!await page.locator('#route-flash').isHidden())throw Error('Flash did not end');
+if(await page.evaluate(()=>legIndex)!==1)throw Error('Route did not continue');
+await page.evaluate(()=>{jumpTo(10);routePlaying=true;cameraPhase='travel';legElapsed=3600+travelDuration(10);routeLast=0;routeTick(performance.now());});
+if(!await page.locator('#route-flash').isHidden())throw Error('Barcelona must not show flash');
 await page.evaluate(()=>{stopRoute();jumpTo(4);});
 if(await page.locator('.vehicle-body.train').count()!==1)throw Error('Train missing');
 await page.setViewportSize({width:1440,height:1000});
