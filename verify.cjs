@@ -5,7 +5,28 @@ const server=http.createServer((req,res)=>{const file=path.join(__dirname,decode
 for(const width of [1440,390,768]){await page.setViewportSize({width,height:900});await page.screenshot({path:`qa-${width}.png`,fullPage:true});const overflow=await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth);if(overflow)throw Error('Overflow '+width);await page.locator('#album').scrollIntoViewIfNeeded();await page.locator('.photo-card img').first().evaluate(img=>img.decode());await page.screenshot({path:`qa-album-${width}.png`});await page.locator('#historia').scrollIntoViewIfNeeded();await page.screenshot({path:`qa-story-${width}.png`});await page.locator('#inicio').scrollIntoViewIfNeeded();}
 await page.getByRole('button',{name:'Revivir nuestro viaje'}).click();await page.getByRole('button',{name:'Pausar',exact:true}).click();if(await page.locator('#cinema-progress button').count()!==100)throw Error('Not exactly 100');await page.locator('#cinema-progress button').nth(0).click();await page.waitForTimeout(700);const fill1=parseFloat(await page.locator('#cinema-progress button').nth(0).evaluate(e=>getComputedStyle(e).getPropertyValue('--fill')));if(fill1<5)throw Error('Progress did not fill');await page.locator('#cinema-progress button').nth(49).click();if(await page.locator('#cinema-count').textContent()!=='50 / 100')throw Error('Segment seek');await page.getByRole('button',{name:'Siguiente foto'}).click();if(await page.locator('#cinema-count').textContent()!=='51 / 100')throw Error('Cinema next');await page.keyboard.press(' ');if(await page.getByRole('button',{name:'Reproducir',exact:true}).count()!==1)throw Error('Keyboard pause');await page.keyboard.press('Escape');
 await page.getByRole('button',{name:'Japón',exact:true}).click();const japanCount=await page.evaluate(async()=> (await (await fetch('album.json')).json()).filter(p=>Number(p.date.slice(-2))>=10).length);const japanCountText=String(japanCount).replace(/\B(?=(\d{3})+(?!\d))/g,'.');await page.locator('.photo-card[data-gallery-start]').first().click();let caption=await page.locator('#viewer-caption').textContent();if(!caption.endsWith(`de ${japanCountText}`))throw Error('Full album filtered count');await page.keyboard.press('ArrowRight');caption=await page.locator('#viewer-caption').textContent();if(!caption.endsWith(`de ${japanCountText}`))throw Error('Full album keyboard navigation');await page.keyboard.press('Escape');await page.getByRole('button',{name:'Todo el viaje',exact:true}).click();await page.locator('.photo-card[data-gallery-start]').first().click();if(!(await page.locator('#viewer-caption').textContent()).endsWith('de 4.111'))throw Error('All photo count');await page.keyboard.press('Escape');await page.getByRole('button',{name:'Página siguiente'}).click();if(!(await page.locator('#page-count').textContent()).startsWith('Lugares 5'))throw Error('Pagination');
-await page.getByRole('button',{name:'Siguiente parada'}).click();if(await page.locator('#stop-title').textContent()!=='Busan')throw Error('Route');await page.getByRole('button',{name:'Animar ruta'}).click();await page.waitForTimeout(2500);await page.getByRole('button',{name:'Pausar ruta'}).click();
+await page.getByRole('button',{name:'Siguiente parada'}).click();if(await page.locator('#stop-title').textContent()!=='Seúl')throw Error('Route');await page.getByRole('button',{name:'Animar ruta'}).click();await page.waitForTimeout(2500);await page.getByRole('button',{name:'Pausar ruta'}).click();
+await page.locator('[data-stop="0"]').click();
+if(await page.locator('[data-stop]').count()!==12)throw Error('Missing Barcelona endpoints');
+await page.getByRole('button',{name:'Animar ruta'}).click();
+await page.waitForTimeout(1800);
+if(await page.locator('.vehicle-body.plane').count()!==1)throw Error('Departure plane missing');
+await page.getByRole('button',{name:'Pausar ruta'}).click();
+const paused=await page.evaluate(()=>legElapsed);await page.waitForTimeout(200);
+if(await page.evaluate(()=>legElapsed)!==paused)throw Error('Route pause');
+for(let i=0;i<11;i++){
+  await page.evaluate(i=>{jumpTo(i);routePlaying=true;legElapsed=7100;routeLast=0;routeTick(performance.now());cancelAnimationFrame(routeFrame);},i);
+  if(await page.locator('#stop-title').textContent()!==await page.evaluate(i=>tripStops[i+1].name,i))throw Error('Arrival '+i);
+}
+await page.evaluate(()=>{stopRoute();jumpTo(4);});
+if(await page.locator('.vehicle-body.train').count()!==1)throw Error('Train missing');
+await page.setViewportSize({width:1440,height:1000});
+await page.locator('#ruta').scrollIntoViewIfNeeded();await page.waitForTimeout(2200);
+await page.locator('.route-layout').screenshot({path:'qa-route-desktop.png'});
+await page.setViewportSize({width:390,height:900});await page.waitForTimeout(500);
+await page.locator('.route-layout').screenshot({path:'qa-route-mobile.png'});
+await page.emulateMedia({reducedMotion:'reduce'});await page.reload();await page.waitForSelector('[data-stop="11"]');
+await page.locator('[data-stop="11"]').click();if(await page.locator('#stop-title').textContent()!=='Barcelona')throw Error('Return Barcelona');
 if(errors.length)throw Error(errors.join(';'));console.log('PASS: 1440/768/390 px, no overflow; map tiles, route animation, cinema pause/next/Escape, album filter/pagination/lightbox/keyboard; no JS errors.');await browser.close();server.close();})().catch(e=>{console.error(e);server.close();process.exit(1)});
 
 
