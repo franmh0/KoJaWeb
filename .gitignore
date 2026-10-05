@@ -1,3 +1,4 @@
 qa-*.png
+verify.cjs
 node_modules/
 .vercel/
