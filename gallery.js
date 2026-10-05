@@ -3,7 +3,7 @@
   const $ = selector => document.querySelector(selector);
   const formatCount = value => String(value).replace(/\B(?=(\d{3})+(?!\d))/g,'.');
   let all = [], visible = [], current = 0, page = 0;
-  const perPage = 2;
+  const perPage = 4;
   const placeNames = {Salida:'Salida',Seul:'Seúl',Gwanghwamun:'Gwanghwamun',OlympicPark:'Olympic Park',Busan:'Busan',Namsan:'Namsan',Myeongdon:'Myeongdong',Akihabara:'Akihabara',Shibuya:'Shibuya',Asakusa:'Asakusa',Odaiba:'Odaiba',Nagoya:'Nagoya',Arashiyama:'Arashiyama',FushimiInari:'Fushimi Inari',Nara:'Nara',Hiroshima:'Hiroshima',Osaka:'Osaka',Pokemon:'Pokémon',Mitaka:'Mitaka',Descanso:'Día tranquilo',Kamakura:'Kamakura',Roppongi:'Roppongi'};
   const placeByDay = new Map(Object.entries({
     '01':'Salida','02':'Seul','03':'Gwanghwamun','04':'OlympicPark','05':'Busan','06':'Busan','07':'Busan','08':'Namsan','09':'Myeongdon','10':'Akihabara','11':'Shibuya','12':'Asakusa','13':'Odaiba','14':'Nagoya','15':'Arashiyama','16':'FushimiInari','17':'Nara','18':'Hiroshima','19':'Osaka','20':'Pokemon','21':'Mitaka','22':'Descanso','23':'Kamakura','24':'Roppongi','25':'Descanso','26':'Descanso'
