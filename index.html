@@ -3,19 +3,45 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Nuestro viaje de 2010</title>
+    <title>Nuestro viaje de 2024 · Prueba de profundidad</title>
     <style>
       :root { color-scheme: dark; font-family: Georgia, serif; }
-      body { margin: 0; min-height: 100vh; display: grid; place-items: center; background: #17131a; color: #fff8ef; }
-      main { max-width: 680px; padding: 3rem; text-align: center; }
-      h1 { font-size: clamp(2.5rem, 8vw, 5.5rem); font-weight: 400; margin: 0 0 1rem; }
-      p { font: 1.1rem/1.7 system-ui, sans-serif; color: #d8c9c1; }
+      * { box-sizing: border-box; }
+      body { margin: 0; background: #11100f; color: #fff8ef; }
+      .demo { min-height: 100vh; display: grid; place-items: center; padding: 6vh 6vw; overflow: hidden; }
+      .intro { max-width: 1180px; width: 100%; }
+      .eyebrow { font: 700 .72rem/1 system-ui, sans-serif; letter-spacing: .22em; text-transform: uppercase; color: #d8af70; }
+      h1 { max-width: 700px; font-size: clamp(3rem, 8vw, 7rem); line-height: .95; font-weight: 400; margin: 1rem 0 1.5rem; }
+      .intro > p { max-width: 520px; font: 1.05rem/1.7 system-ui, sans-serif; color: #d8c9c1; }
+      .stage { position: relative; height: min(68vw, 620px); min-height: 440px; margin-top: 3rem; perspective: 1200px; }
+      .frame { position: absolute; inset: 0; overflow: hidden; border: 1px solid #ffffff33; border-radius: 3px; transform: rotateX(var(--rx, 0deg)) rotateY(var(--ry, 0deg)); transition: transform .2s ease-out; box-shadow: 0 35px 90px #000b; }
+      .layer { position: absolute; inset: -5%; background-position: center; background-size: cover; will-change: transform; }
+      .back { background-image: linear-gradient(120deg, #15100dcc, transparent 60%), url('assets/gyeongbokgung.jpg'); transform: translate3d(calc(var(--mx, 0) * -8px), calc(var(--my, 0) * -8px), -40px) scale(1.1); filter: saturate(.8) brightness(.7); }
+      .mid { background-image: linear-gradient(90deg, transparent 50%, #0004), url('assets/gyeongbokgung.jpg'); transform: translate3d(calc(var(--mx, 0) * -18px), calc(var(--my, 0) * -18px), 0) scale(1.08); clip-path: polygon(0 0, 76% 0, 68% 100%, 0 100%); }
+      .front { background-image: url('assets/gyeongbokgung.jpg'); transform: translate3d(calc(var(--mx, 0) * -34px), calc(var(--my, 0) * -34px), 50px) scale(1.06); clip-path: polygon(64% 0, 100% 0, 100% 100%, 72% 100%); filter: saturate(1.15) contrast(1.05); }
+      .caption { position: absolute; left: 2rem; bottom: 2rem; z-index: 3; max-width: 390px; padding: 1.2rem 1.4rem; background: #17110dcc; backdrop-filter: blur(12px); border-left: 2px solid #d8af70; }
+      .caption strong { display: block; font-size: 1.5rem; font-weight: 400; margin-bottom: .35rem; }
+      .caption span { font: .82rem/1.4 system-ui, sans-serif; color: #d8c9c1; }
+      .hint { margin-top: 1rem; font: .78rem/1.4 system-ui, sans-serif; color: #a99d95; }
+      @media (prefers-reduced-motion: reduce) { .frame { transition: none; } }
     </style>
   </head>
   <body>
-    <main>
-      <h1>Nuestro viaje de 2010</h1>
-      <p>Un pequeño rincón para volver a aquellos días, foto a foto.</p>
+    <main class="demo">
+      <section class="intro">
+        <div class="eyebrow">Prueba visual · Funcionalidad 18</div>
+        <h1>Un recuerdo con profundidad.</h1>
+        <p>Una fotografía del palacio Gyeongbokgung convertida en una escena con capas. Mueve el cursor sobre la imagen para descubrir el efecto parallax.</p>
+        <div class="stage" id="stage" aria-label="Fotografía interactiva con efecto de profundidad">
+          <div class="frame"><div class="layer back"></div><div class="layer mid"></div><div class="layer front"></div><div class="caption"><strong>Gyeongbokgung, Seúl</strong><span>3 de agosto de 2024 · Una escena que vuelve a moverse.</span></div></div>
+        </div>
+        <div class="hint">En móvil, el efecto se convierte en una animación suave para mantener la experiencia ligera.</div>
+      </section>
     </main>
+    <script>
+      const stage = document.querySelector('#stage'); const root = document.documentElement;
+      stage.addEventListener('pointermove', (event) => { const box = stage.getBoundingClientRect(); const x = (event.clientX - box.left) / box.width - .5; const y = (event.clientY - box.top) / box.height - .5; root.style.setProperty('--mx', x.toFixed(3)); root.style.setProperty('--my', y.toFixed(3)); root.style.setProperty('--ry', `${(x * 4).toFixed(2)}deg`); root.style.setProperty('--rx', `${(y * -4).toFixed(2)}deg`); });
+      stage.addEventListener('pointerleave', () => { root.style.setProperty('--mx', 0); root.style.setProperty('--my', 0); root.style.setProperty('--rx', '0deg'); root.style.setProperty('--ry', '0deg'); });
+    </script>
   </body>
 </html>
