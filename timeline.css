@@ -5,4 +5,7 @@
 #cinema-progress button[aria-current=true]:after{background:#fff0ca}
 #cinema-progress button:focus-visible{outline:2px solid white;outline-offset:0;border-radius:4px}
 .cinema-controls button:disabled{opacity:.35;cursor:default}
+#cinema-title{font-size:clamp(1.5rem,3.5vw,3.5rem)}
+#cinema-date{order:2;margin:.75rem 0 0;font-size:.7rem;letter-spacing:.16em;color:#e3cfad}
+#cinema-text{display:none}
 @media(max-width:760px){#cinema-progress{gap:2px}#cinema-progress button{flex-basis:20px;min-width:20px}.cinema-controls>div:last-child{gap:5px}.cinema-controls button{padding:10px 9px;font-size:10px}}
